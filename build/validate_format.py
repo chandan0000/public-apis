@@ -46,27 +46,27 @@ def check_alphabetical(lines):
         if not line.startswith('|') or line.startswith('|---'):
             continue
         raw_title = [x.strip() for x in line.split('|')[1:-1]][0]
-        title_re_match = link_re.match(raw_title)
-        if title_re_match:
+        if title_re_match := link_re.match(raw_title):
             sections[category].append(title_re_match.group(1).upper())
 
     for category, entries in sections.items():
         if sorted(entries) != entries:
-            add_error(section_line_num[category], "{} section is not in alphabetical order".format(category))
+            add_error(
+                section_line_num[category],
+                f"{category} section is not in alphabetical order",
+            )
 
 
 def check_entry(line_num, segments):
     # START Title
     raw_title = segments[index_title]
-    title_re_match = link_re.match(raw_title)
-    # url should be wrapped in '[TITLE](LINK)' Markdown syntax
-    if not title_re_match:
-        add_error(line_num, 'Title syntax should be "[TITLE](LINK)"')
-    else:
+    if title_re_match := link_re.match(raw_title):
         # do not allow "... API" in the entry title
         title = title_re_match.group(1)
         if title.upper().endswith(' API'):
             add_error(line_num, 'Title should not end with "... API". Every entry is an API here!')
+    else:
+        add_error(line_num, 'Title syntax should be "[TITLE](LINK)"')
     # END Title
     # START Description
     # first character should be capitalized
@@ -76,10 +76,14 @@ def check_entry(line_num, segments):
     # last character should not punctuation
     char = segments[index_desc][-1]
     if char in punctuation:
-        add_error(line_num, "description should not end with {}".format(char))
+        add_error(line_num, f"description should not end with {char}")
     desc_length = len(segments[index_desc])
     if desc_length > 100:
-        add_error(line_num, "description should not exceed 100 characters (currently {})".format(desc_length))
+        add_error(
+            line_num,
+            f"description should not exceed 100 characters (currently {desc_length})",
+        )
+
     # END Description
     # START Auth
     # values should conform to valid options only
@@ -87,19 +91,19 @@ def check_entry(line_num, segments):
     if auth != 'No' and (not auth.startswith('`') or not auth.endswith('`')):
         add_error(line_num, "auth value is not enclosed with `backticks`")
     if auth.replace('`', '') not in auth_keys:
-        add_error(line_num, "{} is not a valid Auth option".format(auth))
+        add_error(line_num, f"{auth} is not a valid Auth option")
     # END Auth
     # START HTTPS
     # values should conform to valid options only
     https = segments[index_https]
     if https not in https_keys:
-        add_error(line_num, "{} is not a valid HTTPS option".format(https))
+        add_error(line_num, f"{https} is not a valid HTTPS option")
     # END HTTPS
     # START CORS
     # values should conform to valid options only
     cors = segments[index_cors]
     if cors not in cors_keys:
-        add_error(line_num, "{} is not a valid CORS option".format(cors))
+        add_error(line_num, f"{cors} is not a valid CORS option")
     # END CORS
 
 
@@ -109,7 +113,7 @@ def check_format(filename):
     appending to error list as needed
     """
     with open(filename) as fp:
-        lines = list(line.rstrip() for line in fp)
+        lines = [line.rstrip() for line in fp]
     check_alphabetical(lines)
     # START Check Entries
     num_in_category = min_entries_per_section + 1
@@ -120,15 +124,21 @@ def check_format(filename):
             title_links.append(section_title_re.match(line).group(1))
         # check each section for the minimum number of entries
         if line.startswith(anchor):
-            match = anchor_re.match(line)
-            if match:
+            if match := anchor_re.match(line):
                 if match.group(1) not in title_links:
-                    add_error(line_num, "section header ({}) not added as a title link".format(match.group(1)))
+                    add_error(
+                        line_num,
+                        f"section header ({match.group(1)}) not added as a title link",
+                    )
+
             else:
                 add_error(line_num, "section header is not formatted correctly")
             if num_in_category < min_entries_per_section:
-                add_error(category_line, "{} section does not have the minimum {} entries (only has {})".format(
-                    category, min_entries_per_section, num_in_category))
+                add_error(
+                    category_line,
+                    f"{category} section does not have the minimum {min_entries_per_section} entries (only has {num_in_category})",
+                )
+
             category = line.split(' ')[1]
             category_line = line_num
             num_in_category = 0
@@ -139,8 +149,11 @@ def check_format(filename):
         num_in_category += 1
         segments = line.split('|')[1:-1]
         if len(segments) < num_segments:
-            add_error(line_num, "entry does not have all the required sections (have {}, need {})".format(
-                len(segments), num_segments))
+            add_error(
+                line_num,
+                f"entry does not have all the required sections (have {len(segments)}, need {num_segments})",
+            )
+
             continue
         # START Global
         for segment in segments:
